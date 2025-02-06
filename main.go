@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -58,6 +59,27 @@ func commandHelp() {
 	fmt.Println("exit: Exit the Pokedex")
 }
 
+func commandMap() {
+	url := "https://pokeapi.co/api/v2/location-area/"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		os.Exit(0)
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		os.Exit(0)
+	}
+	defer res.Body.Close()
+	code := res.StatusCode
+	if code < 299 {
+		fmt.Println(res.Body)
+	}
+
+	
+
+}
+
 type cliCommand struct {
 	name string
 	description string
@@ -74,5 +96,10 @@ var commands = map[string]cliCommand{
 		name: "help",
 		description: "Displays a help message",
 		callback: commandHelp,
+	},
+	"map": {
+		name: "map",
+		description: "Open the map",
+		callback: commandMap,
 	},
 }
