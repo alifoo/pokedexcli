@@ -2,11 +2,14 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
 )
+
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
@@ -25,7 +28,7 @@ func main() {
 		for key, value := range commands {
 			if command == key {
 				exec = true
-				value.callback()
+				value.callback(&config)
 			}
 		}
 
@@ -45,12 +48,12 @@ func cleanInput(text string) []string {
 	return input
 }
 
-func commandExit() {
+func commandExit(config *Config) {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 }
 
-func commandHelp() {
+func commandHelp(config *Config) {
 	fmt.Println("Welcome to the Pokedex!\nUsage:\n")
 	// for _, value := range commands {
 	// 	fmt.Printf("%s: %s\n", value.name, value.description)
@@ -59,47 +62,107 @@ func commandHelp() {
 	fmt.Println("exit: Exit the Pokedex")
 }
 
-func commandMap() {
+func commandMap(config *Config) {
 	url := "https://pokeapi.co/api/v2/location-area/"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		os.Exit(0)
+		fmt.Println(err)
 	}
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		os.Exit(0)
+		fmt.Println(err)
 	}
 	defer res.Body.Close()
 	code := res.StatusCode
-	if code < 299 {
-		fmt.Println(res.Body)
+	fmt.Printf("Code: %v\n", code)
+
+
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+	var locationResponse Location
+	err = json.Unmarshal(data, &locationResponse)
+	if err != nil {
+		fmt.Println(err)
 	}
 
-	
+	for _, loc := range locationResponse.Results {
+		fmt.Println(loc.Name)
+	}
+}
+
+func commandMapB(config *Config) {
+	if config.Previous == nil {
+		fmt.Println("you're on the first page")
+	} else {
+		fmt.Println("cool")
+		url := *config.Previous
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		data, err := io.ReadAll(res.Body)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		var locationResponse Location
+		err = json.Unmarshal(data, &locationResponse)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		for _, loc := range locationResponse.Results {
+			fmt.Println(loc.Name)
+		}
+
+	}
 
 }
 
 type cliCommand struct {
 	name string
 	description string
-	callback func()
+	callback func(*Config)
 }
+
+type Config struct {
+	Next *string
+	Previous *string
+}
+
+
+var config Config
 
 var commands = map[string]cliCommand{
 	"exit": {
 		name: "exit",
 		description: "Exit the Pokedex",
-		callback: commandExit,
+		callback: func(config *Config) { commandExit(config) },
 	},
 	"help": {
 		name: "help",
 		description: "Displays a help message",
-		callback: commandHelp,
+		callback: func(config *Config) { commandHelp(config) },
 	},
 	"map": {
 		name: "map",
 		description: "Open the map",
-		callback: commandMap,
+		callback: func(config *Config) { commandMap(config) },
+	},
+	"mapb": {
+		name: "mapb",
+		description: "Goes back in the map",
+		callback: func(config *Config)  {
+			commandMapB(config)
+		},
 	},
 }
