@@ -42,3 +42,7 @@ func (c *Cache) Add(key string, val []byte) {
     val: val,
   }
 }
+
+func (c *Cache) reapLoop(interval time.Duration) {
+
+}
