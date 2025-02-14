@@ -8,11 +8,14 @@ import (
 	"net/http"
 	"os"
 	"strings"
-)
+	"time"
 
+	"github.com/alifoo/pokedexcli/internal"
+)
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
+	config.c = internal.NewCache(5 * time.Second)
 	for {
 		exec := false
 		fmt.Print("Pokedex > ")
@@ -54,7 +57,7 @@ func commandExit(config *Config) {
 }
 
 func commandHelp(config *Config) {
-	fmt.Println("Welcome to the Pokedex!\nUsage:\n")
+	fmt.Print("Welcome to the Pokedex!\nUsage:\n\n")
 	// for _, value := range commands {
 	// 	fmt.Printf("%s: %s\n", value.name, value.description)
 	// }
@@ -64,32 +67,49 @@ func commandHelp(config *Config) {
 
 func commandMap(config *Config) {
 	url := "https://pokeapi.co/api/v2/location-area/"
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		fmt.Println(err)
-	}
+	d, exists := config.c.Get(url)
+	if exists {
+		fmt.Println("Data still in cache! Using existing data.")
+		var locationResponse Location
+		err := json.Unmarshal(d, &locationResponse)
+		if err != nil {
+			fmt.Println(err)
+		}
 
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer res.Body.Close()
-	code := res.StatusCode
-	fmt.Printf("Code: %v\n", code)
+		for _, loc := range locationResponse.Results {
+			fmt.Println(loc.Name)
+		}
+	} else {
+		fmt.Println("Data not in cache! Requesting...")
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			fmt.Println(err)
+		}
+		defer res.Body.Close()
+		code := res.StatusCode
+		fmt.Printf("Code: %v\n", code)
 
 
-	data, err := io.ReadAll(res.Body)
-	if err != nil {
-		fmt.Println(err)
-	}
-	var locationResponse Location
-	err = json.Unmarshal(data, &locationResponse)
-	if err != nil {
-		fmt.Println(err)
-	}
+		data, err := io.ReadAll(res.Body)
+		if err != nil {
+			fmt.Println(err)
+		}
 
-	for _, loc := range locationResponse.Results {
-		fmt.Println(loc.Name)
+		config.c.Add(url, data)
+		var locationResponse Location
+		err = json.Unmarshal(data, &locationResponse)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		for _, loc := range locationResponse.Results {
+			fmt.Println(loc.Name)
+		}
 	}
 }
 
@@ -137,8 +157,8 @@ type cliCommand struct {
 type Config struct {
 	Next *string
 	Previous *string
+	c *internal.Cache
 }
-
 
 var config Config
 
