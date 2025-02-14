@@ -239,13 +239,20 @@ func commandInspect(config *Config, pokemonName string) {
 	pokemonInfo := caughtPokemons[pokemonName]
 	if len(pokemonInfo.Name) == 0 {
 		fmt.Println("Pokemon not found!")
+		return
 	}
 
-	fmt.Printf("Name: %s", pokemonInfo.Name)
-	fmt.Printf("Height: %v", pokemonInfo.Height)
-	fmt.Printf("Weight: %v", pokemonInfo.Weight)
-	fmt.Printf("Stats: %s", pokemonInfo.Name)
-	fmt.Printf("Name: %s", pokemonInfo.Name)
+	fmt.Printf("Name: %s\n", pokemonInfo.Name)
+	fmt.Printf("Height: %v\n", pokemonInfo.Height)
+	fmt.Printf("Weight: %v\n", pokemonInfo.Weight)
+	fmt.Println("Stats:")
+	for _, s := range pokemonInfo.Stats {
+		fmt.Printf("  -%v: %v\n", s.Stat.Name, s.BaseStat)
+	}
+	fmt.Println("Types:")
+	for _, t := range pokemonInfo.Types {
+		fmt.Printf("  - %v\n", t.Type.Name)
+	}
 }
 
 type cliCommand struct {
