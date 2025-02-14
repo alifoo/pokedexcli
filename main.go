@@ -228,6 +228,7 @@ func commandCatch(config *Config, pokemonName string) {
 	chance := rand.IntN(pokemon.BaseExperience * 2)
 	if chance >= pokemon.BaseExperience {
 		fmt.Printf("Congratulations! You catched %s!\n", pokemonName)
+		fmt.Println("You may now inspect it with the inspect command.")
 		caughtPokemons[pokemonName] = pokemon
 	} else {
 		fmt.Printf("You were unable to catch it. Your score was %v. Try throwing another pokeball!\n", chance)
@@ -252,6 +253,18 @@ func commandInspect(config *Config, pokemonName string) {
 	fmt.Println("Types:")
 	for _, t := range pokemonInfo.Types {
 		fmt.Printf("  - %v\n", t.Type.Name)
+	}
+}
+
+func commandPokedex(config *Config, s string) {
+	if len(caughtPokemons) == 0 {
+		fmt.Println("You still have 0 pokemons. Try using the command 'catch' and a pokemon name!")
+		return
+	}
+
+	fmt.Println("Your pokedex:")
+	for _, p := range caughtPokemons {
+		fmt.Printf("  - %v\n", p.Name)
 	}
 }
 
@@ -312,6 +325,13 @@ var commands = map[string]cliCommand{
 		description: "Inspect a caught pokemon",
 		callback: func(config *Config, pokemonName string) {
 			commandInspect(config, pokemonName)
+		},
+	},
+	"pokedex": {
+		name: "pokedex",
+		description: "Inspect a all caught pokemon",
+		callback: func(config *Config, s string) {
+			commandPokedex(config, s)
 		},
 	},
 }
