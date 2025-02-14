@@ -14,7 +14,63 @@ import (
 	"github.com/alifoo/pokedexcli/internal"
 )
 
+var commands map[string]cliCommand
+
 func main() {
+	commands = map[string]cliCommand{
+		"exit": {
+			name: "exit",
+			description: "Exit the Pokedex",
+			callback: func(config *Config, areaName string) { commandExit(config, areaName) },
+			},
+		"help": {
+			name: "help",
+			description: "Displays a help message",
+			callback: func(config *Config, areaName string) { commandHelp(config, areaName ) },
+		},
+		"map": {
+			name: "map",
+			description: "Open the map",
+			callback: func(config *Config, areaName string) { commandMap(config, areaName) },
+		},
+		"mapb": {
+			name: "mapb",
+			description: "Goes back in the map",
+			callback: func(config *Config, areaName string)  {
+				commandMapB(config, areaName)
+			},
+		},
+		"explore": {
+			name: "explore",
+			description: "Explore a specific area, seeing all pokemons found there",
+			callback: func(config *Config, areaName string) {
+				commandExplore(config, areaName)
+			},
+		},
+		"catch": {
+			name: "catch",
+			description: "Catch a pokemon",
+			callback: func(config *Config, pokemonName string) {
+				commandCatch(config, pokemonName)
+			},
+		},
+		"inspect": {
+			name: "inspect",
+			description: "Inspect a caught pokemon",
+			callback: func(config *Config, pokemonName string) {
+				commandInspect(config, pokemonName)
+			},
+		},
+		"pokedex": {
+			name: "pokedex",
+			description: "Inspect a all caught pokemon",
+			callback: func(config *Config, s string) {
+				commandPokedex(config, s)
+			},
+		},
+	}
+
+
 	scanner := bufio.NewScanner(os.Stdin)
 	config.c = internal.NewCache(5 * time.Second)
 	caughtPokemons = make(map[string]Pokemon)
@@ -64,12 +120,10 @@ func commandExit(config *Config, areaName string) {
 }
 
 func commandHelp(config *Config, areaName string) {
-	fmt.Print("Welcome to the Pokedex!\nUsage:\n\n")
-	// for _, value := range commands {
-	// 	fmt.Printf("%s: %s\n", value.name, value.description)
-	// }
-	fmt.Println("help: Displays a help message")
-	fmt.Println("exit: Exit the Pokedex")
+	fmt.Print("Welcome to the Pokedex!\nUsage:\n")
+	for _, value := range commands {
+		fmt.Printf("%s: %s\n", value.name, value.description)
+	}
 }
 
 func commandMap(config *Config, areaName string) {
@@ -124,7 +178,6 @@ func commandMapB(config *Config, areaName string) {
 	if config.Previous == nil {
 		fmt.Println("you're on the first page")
 	} else {
-		fmt.Println("cool")
 		url := *config.Previous
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
@@ -161,38 +214,45 @@ func commandExplore(config *Config, areaName string) {
 	d, exists := config.c.Get(url)
 
 	if !exists {
-		fmt.Println("Data not in cache! Requesting...")
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("Error in creating request: %v", err)
+			return
 		}
 
 		res, err := http.DefaultClient.Do(req)
-		defer res.Body.Close()
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("Error in making request: %v", err)
+			return
 		}
+		defer res.Body.Close()
 
+		if res.StatusCode != http.StatusOK {
+			fmt.Printf("Error: Area '%s' not found\n", areaName)
+			return
+		}
 		data, err := io.ReadAll(res.Body)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("Error in reading response body: %v", err)
+			return
 		}
 
 		var locationAreaResponse LocationArea
 		err = json.Unmarshal(data, &locationAreaResponse)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("Error in Unmarshal of data: %v", err)
+			return
 		}
 
 		for _, poke := range locationAreaResponse.PokemonEncounters {
 			fmt.Println(poke.Pokemon.Name)
 		}
 	} else {
-		fmt.Println("Data still in cache! Using existing data.")
 		var locationAreaResponse LocationArea
 		err := json.Unmarshal(d, &locationAreaResponse)
 		if err != nil {
 			fmt.Println(err)
+			return
 		}
 
 		for _, poke := range locationAreaResponse.PokemonEncounters {
@@ -283,55 +343,3 @@ type Config struct {
 var config Config
 var caughtPokemons map[string]Pokemon
 
-var commands = map[string]cliCommand{
-	"exit": {
-		name: "exit",
-		description: "Exit the Pokedex",
-		callback: func(config *Config, areaName string) { commandExit(config, areaName) },
-	},
-	"help": {
-		name: "help",
-		description: "Displays a help message",
-		callback: func(config *Config, areaName string) { commandHelp(config, areaName ) },
-	},
-	"map": {
-		name: "map",
-		description: "Open the map",
-		callback: func(config *Config, areaName string) { commandMap(config, areaName) },
-	},
-	"mapb": {
-		name: "mapb",
-		description: "Goes back in the map",
-		callback: func(config *Config, areaName string)  {
-			commandMapB(config, areaName)
-		},
-	},
-	"explore": {
-		name: "explore",
-		description: "Explore a specific area",
-		callback: func(config *Config, areaName string) {
-			commandExplore(config, areaName)
-		},
-	},
-	"catch": {
-		name: "catch",
-		description: "Catch a pokemon",
-		callback: func(config *Config, pokemonName string) {
-			commandCatch(config, pokemonName)
-		},
-	},
-	"inspect": {
-		name: "inspect",
-		description: "Inspect a caught pokemon",
-		callback: func(config *Config, pokemonName string) {
-			commandInspect(config, pokemonName)
-		},
-	},
-	"pokedex": {
-		name: "pokedex",
-		description: "Inspect a all caught pokemon",
-		callback: func(config *Config, s string) {
-			commandPokedex(config, s)
-		},
-	},
-}
