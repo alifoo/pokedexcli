@@ -14,7 +14,33 @@ import (
 	"github.com/alifoo/pokedexcli/internal"
 )
 
+
 var commands map[string]cliCommand
+var config Config
+var caughtPokemons map[string]Pokemon
+
+const (
+	Reset  = "\033[0m"
+	Red    = "\033[31m"
+	Green  = "\033[32m"
+	Yellow = "\033[33m"
+	Blue   = "\033[34m"
+	Purple = "\033[35m"
+	Cyan   = "\033[36m"
+	White  = "\033[37m"
+)
+
+type cliCommand struct {
+	name string
+	description string
+	callback func(*Config, string)
+}
+
+type Config struct {
+	Next *string
+	Previous *string
+	c *internal.Cache
+}
 
 func main() {
 	commands = map[string]cliCommand{
@@ -115,14 +141,14 @@ func cleanInput(text string) []string {
 }
 
 func commandExit(config *Config, areaName string) {
-	fmt.Println("Closing the Pokedex... Goodbye!")
+	fmt.Println(Red + "Closing the Pokedex... Goodbye!" + Reset)
 	os.Exit(0)
 }
 
 func commandHelp(config *Config, areaName string) {
-	fmt.Print("Welcome to the Pokedex!\nUsage:\n")
+	fmt.Print(Green + "Welcome to the Pokedex!\nUsage:\n" + Reset)
 	for _, value := range commands {
-		fmt.Printf("%s: %s\n", value.name, value.description)
+		fmt.Printf(Blue + "%s: %s\n" + Reset, value.name, value.description)
 	}
 }
 
@@ -130,7 +156,6 @@ func commandMap(config *Config, areaName string) {
 	url := "https://pokeapi.co/api/v2/location-area/"
 	d, exists := config.c.Get(url)
 	if exists {
-		fmt.Println("Data still in cache! Using existing data.")
 		var locationResponse Location
 		err := json.Unmarshal(d, &locationResponse)
 		if err != nil {
@@ -141,7 +166,6 @@ func commandMap(config *Config, areaName string) {
 			fmt.Println(loc.Name)
 		}
 	} else {
-		fmt.Println("Data not in cache! Requesting...")
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			fmt.Println(err)
@@ -152,9 +176,6 @@ func commandMap(config *Config, areaName string) {
 			fmt.Println(err)
 		}
 		defer res.Body.Close()
-		code := res.StatusCode
-		fmt.Printf("Code: %v\n", code)
-
 
 		data, err := io.ReadAll(res.Body)
 		if err != nil {
@@ -176,7 +197,7 @@ func commandMap(config *Config, areaName string) {
 
 func commandMapB(config *Config, areaName string) {
 	if config.Previous == nil {
-		fmt.Println("you're on the first page")
+		fmt.Println("You're on the first page")
 	} else {
 		url := *config.Previous
 		req, err := http.NewRequest("GET", url, nil)
@@ -245,7 +266,7 @@ func commandExplore(config *Config, areaName string) {
 		}
 
 		for _, poke := range locationAreaResponse.PokemonEncounters {
-			fmt.Println(poke.Pokemon.Name)
+			fmt.Println(Purple + poke.Pokemon.Name + Reset)
 		}
 	} else {
 		var locationAreaResponse LocationArea
@@ -256,7 +277,7 @@ func commandExplore(config *Config, areaName string) {
 		}
 
 		for _, poke := range locationAreaResponse.PokemonEncounters {
-			fmt.Println(poke.Pokemon.Name)
+			fmt.Println(Purple + poke.Pokemon.Name + Reset)
 		}
 	}
 }
@@ -287,12 +308,11 @@ func commandCatch(config *Config, pokemonName string) {
 	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
 	chance := rand.IntN(pokemon.BaseExperience * 2)
 	if chance >= pokemon.BaseExperience {
-		fmt.Printf("Congratulations! You catched %s!\n", pokemonName)
+		fmt.Printf(Green + "Congratulations! You catched %s!\n" + Reset, pokemonName)
 		fmt.Println("You may now inspect it with the inspect command.")
 		caughtPokemons[pokemonName] = pokemon
 	} else {
-		fmt.Printf("You were unable to catch it. Your score was %v. Try throwing another pokeball!\n", chance)
-		fmt.Printf("%s base exp: %v\n", pokemonName, pokemon.BaseExperience)
+		fmt.Printf(Yellow + "%v escaped the PokeBall! Try throwing another PokeBall.\n" + Reset, pokemonName)
 	}
 }
 
@@ -318,28 +338,13 @@ func commandInspect(config *Config, pokemonName string) {
 
 func commandPokedex(config *Config, s string) {
 	if len(caughtPokemons) == 0 {
-		fmt.Println("You still have 0 pokemons. Try using the command 'catch' and a pokemon name!")
+		fmt.Println(Yellow + "You still have 0 pokemons. Try using the command 'catch' and a pokemon name!" + Reset)
 		return
 	}
 
-	fmt.Println("Your pokedex:")
+	fmt.Println(Green + "Your pokedex:" + Reset)
 	for _, p := range caughtPokemons {
-		fmt.Printf("  - %v\n", p.Name)
+		fmt.Printf(Cyan + "  - %v\n" + Reset, p.Name)
 	}
 }
-
-type cliCommand struct {
-	name string
-	description string
-	callback func(*Config, string)
-}
-
-type Config struct {
-	Next *string
-	Previous *string
-	c *internal.Cache
-}
-
-var config Config
-var caughtPokemons map[string]Pokemon
 
